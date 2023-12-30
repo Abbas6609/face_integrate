@@ -4,8 +4,9 @@ from insightface.model_zoo import get_model
 from PIL import Image
 import numpy as np
 import cv2
+from io import BytesIO
 
-# Define functions to load images and perform face swapping
+# Define functions to load images and perform face integration
 def load_image(image):
     image = Image.open(image).convert('RGB')  # Convert to RGB
     return np.array(image)
@@ -31,7 +32,7 @@ def swap_faces(faceSource, sourceFaceId, faceDestination, destFaceId, app, swapp
         return result
 
     except Exception as e:
-        st.error(f"An error occurred during face swapping: {e}")
+        st.error(f"An error occurred during face integration: {e}")
         return None
 
 # Main function to run the Streamlit app
@@ -41,8 +42,8 @@ def main():
     app.prepare(ctx_id=0, det_size=(640, 640))
     swapper = get_model('inswapper_128.onnx', download=True, download_zip=True)
 
-    st.title("Facial Integration App")
-    st.markdown("Welcome to Facial Integration", unsafe_allow_html=True)
+    st.title("Tosief's Facial Integration 🎭")
+    st.markdown("## Welcome to Facial Integration App", unsafe_allow_html=True)
 
     source_image = st.file_uploader("Choose a Source Image", type=["png", "jpg", "jpeg"])
     source_face_id = st.number_input('Source Face Position', value=1, min_value=1)
@@ -61,11 +62,32 @@ def main():
     else:
         dest_image_array = None
 
+    # Initialize session state for the output image
+    if 'output_image' not in st.session_state:
+        st.session_state.output_image = None
+
     if st.button('Integrate Faces'):
         if source_image_array is not None and dest_image_array is not None:
-            result = swap_faces(source_image_array, source_face_id, dest_image_array, dest_face_id, app, swapper)
-            if result is not None:
-                st.image(result, caption='Face Swapped Image', use_column_width=True)
+            # Generate the output image and store it in session state
+            st.session_state.output_image = swap_faces(source_image_array, source_face_id, dest_image_array, dest_face_id, app, swapper)
+            
+    # Check if the session state has an output image to display and download
+    if st.session_state.output_image is not None:
+        st.image(st.session_state.output_image, caption='Face Integrated Image', use_column_width=True)
+        
+        # Convert the output image to a byte array for download
+        result_pil = Image.fromarray(st.session_state.output_image.astype('uint8'))
+        buffer = BytesIO()
+        result_pil.save(buffer, format="JPEG")
+        buffer.seek(0)
+        
+        # Create a download button
+        st.download_button(
+            label="Download Image",
+            data=buffer,
+            file_name="face_ingrated.jpg",
+            mime="image/jpeg"
+        )
 
 # Run the main function
 if __name__ == "__main__":
